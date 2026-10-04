@@ -34,7 +34,7 @@ private final class Gauge: Sendable {
     }
 
     @Test func failureInterruptsAndAwaitsInFlightSiblings() async throws {
-        let log = Recorder(), started = Counter(), siblingsStarted = Latch()
+        let log = Recorder(), started = Counter(), siblingsStarted = TestLatch()
         let effect = Effect<[Int], TestError>.forEach(0..<3, concurrency: .unbounded) { i in
             if i == 0 {
                 return siblingsStarted.wait.widen().andThen(Effect<Int, TestError>.fail(TestError(1)))
@@ -51,7 +51,7 @@ private final class Gauge: Sendable {
     }
 
     @Test func interruptingParentInterruptsConcurrentChildren() async throws {
-        let log = Recorder(), started = Counter(), allStarted = Latch()
+        let log = Recorder(), started = Counter(), allStarted = TestLatch()
         let effect = Effect<Void, Never>.forEachDiscarding(0..<4, concurrency: .unbounded) { i in
             Effect<Void, Never>.sync { if started.increment() == 4 { allStarted.open() } }
                 .andThen(Effect<Void, Never>.never)
@@ -120,7 +120,7 @@ private final class Gauge: Sendable {
     }
 
     @Test func raceIgnoresFailuresUntilASuccess() async throws {
-        let gate = Latch()
+        let gate = TestLatch()
         let failing = Effect<Int, TestError>.fail(TestError(1)).ensuring(gate.openEffect)
         let winner = gate.wait.widen(to: TestError.self).as(2)
         #expect(try await failing.race(winner).run() == 2)

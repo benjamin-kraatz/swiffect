@@ -16,7 +16,7 @@ import Testing
     }
 
     @Test func uninterruptibleRegionDefersInterruption() async throws {
-        let started = Latch(), gate = Latch(), log = Recorder()
+        let started = TestLatch(), gate = TestLatch(), log = Recorder()
         let region = started.openEffect.andThen(gate.wait).andThen(log.log("region done")).uninterruptible
         let child = region.andThen(log.log("after region"))
         let fiber = child.runFork()
@@ -29,7 +29,7 @@ import Testing
     }
 
     @Test func restoreMakesInnerEffectInterruptible() async throws {
-        let started = Latch(), log = Recorder()
+        let started = TestLatch(), log = Recorder()
         let effect = Effect<Void, Never>.uninterruptibleMask { restore in
             restore(started.openEffect.andThen(Effect.never)).ensuring(log.log("cleanup"))
         }
@@ -41,7 +41,7 @@ import Testing
     }
 
     @Test func interruptibleInsideUninterruptibleCanBeInterrupted() async throws {
-        let started = Latch()
+        let started = TestLatch()
         let fiber = started.openEffect.andThen(Effect<Void, Never>.never).interruptible.uninterruptible.runFork()
         await started.waitAsync()
         fiber.unsafeInterrupt()
@@ -49,7 +49,7 @@ import Testing
     }
 
     @Test func recoveryCannotCatchOwnInterruption() async throws {
-        let started = Latch(), log = Recorder()
+        let started = TestLatch(), log = Recorder()
         let effect = started.openEffect.andThen(Effect<Int, Never>.never)
             .catchCause { _ in log.log("caught").as(1) }
             .exit.map { _ in 2 }
@@ -66,7 +66,7 @@ import Testing
     }
 
     @Test func finalizersRunUninterruptibly() async throws {
-        let started = Latch(), finalizerStarted = Latch(), gate = Latch(), log = Recorder()
+        let started = TestLatch(), finalizerStarted = TestLatch(), gate = TestLatch(), log = Recorder()
         let finalizer = finalizerStarted.openEffect.andThen(gate.wait).andThen(log.log("finalized"))
         let fiber = started.openEffect.andThen(Effect<Void, Never>.never).ensuring(finalizer).runFork()
         await started.waitAsync()
@@ -80,7 +80,7 @@ import Testing
     }
 
     @Test func callbackCleanupRunsOnInterruptionAndLateResumeIsIgnored() async throws {
-        let registered = Latch(), log = Recorder()
+        let registered = TestLatch(), log = Recorder()
         let resumer = Mutex<Effect<Int, Never>.Resume?>(nil)
         let effect = Effect<Int, Never>.callback { resume in
             resumer.withLock { $0 = resume }
@@ -96,7 +96,7 @@ import Testing
     }
 
     @Test func onInterruptReceivesInterruptors() async throws {
-        let started = Latch(), log = Recorder()
+        let started = TestLatch(), log = Recorder()
         let effect = started.openEffect.andThen(Effect<Void, Never>.never)
             .onInterrupt { ids in log.log("interrupted by \(ids.count)") }
         let fiber = effect.runFork()
@@ -118,7 +118,7 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1))) struct CancellationBridgeTests {
     @Test func cancellingRunExitInterruptsTheRootFiber() async throws {
-        let started = Latch(), log = Recorder()
+        let started = TestLatch(), log = Recorder()
         let effect = started.openEffect.andThen(Effect<Void, Never>.never).onInterrupt(log.log("interrupted"))
         let task = Task { await effect.runExit() }
         await started.waitAsync()
@@ -129,7 +129,7 @@ import Testing
     }
 
     @Test func interruptingTheFiberCancelsTheBridgedTask() async throws {
-        let started = Latch(), cancelled = Latch()
+        let started = TestLatch(), cancelled = TestLatch()
         let effect = Effect { () async -> Void in
             started.open()
             do {

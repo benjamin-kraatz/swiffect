@@ -17,7 +17,7 @@ import Testing
     }
 
     @Test func pollReflectsCompletion() async throws {
-        let gate = Latch()
+        let gate = TestLatch()
         let fiber = gate.wait.as(5).runFork()
         #expect(fiber.unsafePoll() == nil)
         gate.open()
@@ -26,7 +26,7 @@ import Testing
     }
 
     @Test func parentInterruptsAndAwaitsChildrenBeforeCompleting() async throws {
-        let childStarted = Latch(), log = Recorder()
+        let childStarted = TestLatch(), log = Recorder()
         let child = childStarted.openEffect.andThen(Effect<Void, Never>.never)
             .onInterrupt(Effect.yieldNow.andThen(log.log("child finalized")))
         let parent = child.forkChild.andThen(childStarted.wait).andThen(log.log("parent done"))
@@ -38,7 +38,7 @@ import Testing
     }
 
     @Test func detachedFiberOutlivesParent() async throws {
-        let gate = Latch(), finished = Latch()
+        let gate = TestLatch(), finished = TestLatch()
         let parent: Effect<Fiber<Void, Never>, Never> = gate.wait.andThen(finished.openEffect).forkDetach
         let detached = try await parent.run()
         gate.open()
@@ -77,7 +77,7 @@ import Testing
     }
 
     @Test func awaitingIsInterruptibleWithoutAffectingTheTarget() async throws {
-        let gate = Latch(), waiting = Latch()
+        let gate = TestLatch(), waiting = TestLatch()
         let target = gate.wait.as(1).runFork()
         let waiter = waiting.openEffect.andThen(target.await).runFork()
         await waiting.waitAsync()

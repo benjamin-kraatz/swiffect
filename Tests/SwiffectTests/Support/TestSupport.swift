@@ -22,7 +22,7 @@ final class Recorder: Sendable {
 }
 
 /// A one-shot gate: fibers awaiting it are released once it is opened.
-final class Latch: Sendable {
+final class TestLatch: Sendable {
     private let state = Mutex<(open: Bool, waiters: [@Sendable () -> Void])>((false, []))
 
     func open() {

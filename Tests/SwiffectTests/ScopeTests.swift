@@ -24,7 +24,7 @@ import Testing
     }
 
     @Test func parallelStrategyRunsFinalizersConcurrently() async throws {
-        let a = Latch(), b = Latch(), log = Recorder()
+        let a = TestLatch(), b = TestLatch(), log = Recorder()
         let scope = Scope(strategy: .parallel)
         // Each finalizer waits for the other one: this only completes if they run concurrently.
         let program = scope.addFinalizer(a.openEffect.andThen(b.wait).andThen(log.log("a")))
@@ -64,7 +64,7 @@ import Testing
     }
 
     @Test func acquireUseReleaseReleasesOnInterruption() async throws {
-        let started = Latch(), log = Recorder()
+        let started = TestLatch(), log = Recorder()
         let effect = Effect<Void, Never>.acquireUseRelease(
             log.log("acquire"),
             use: { _ in started.openEffect.andThen(Effect.never) },
@@ -78,7 +78,7 @@ import Testing
     }
 
     @Test func forkScopedFiberIsInterruptedWhenScopeCloses() async throws {
-        let started = Latch(), log = Recorder()
+        let started = TestLatch(), log = Recorder()
         let worker = started.openEffect.andThen(Effect<Void, Never>.never).onInterrupt(log.log("worker interrupted"))
         let program = worker.forkScoped.andThen(started.wait).andThen(log.log("scope body done")).scoped
         try await program.run()
