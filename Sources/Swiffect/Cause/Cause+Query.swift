@@ -76,11 +76,11 @@ extension Cause {
         })
     }
 
-    /// Converts every typed failure into a defect.
-    public func failuresAsDefects() -> Cause<Never> {
+    /// Converts every typed failure into a defect, optionally transforming it first.
+    public func failuresAsDefects(_ transform: (Failure) -> any Error = { $0 }) -> Cause<Never> {
         Cause<Never>(reasons: reasons.map { reason in
             switch reason {
-            case .fail(let error): .die(error)
+            case .fail(let error): .die(transform(error))
             case .die(let defect): .die(defect)
             case .interrupt(let id): .interrupt(id)
             }
