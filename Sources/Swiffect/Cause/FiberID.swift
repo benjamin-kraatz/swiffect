@@ -22,6 +22,7 @@ public struct FiberID: Hashable, Comparable, Sendable, CustomStringConvertible {
         FiberID(rawValue: fiberIDCounter.wrappingAdd(1, ordering: .relaxed).newValue)
     }
 
+    /// Orders identifiers by creation order.
     public static func < (lhs: FiberID, rhs: FiberID) -> Bool {
         lhs.rawValue < rhs.rawValue
     }

@@ -24,16 +24,21 @@ extension Effect {
         flatMap { value in predicate(value) ? .succeed(value) : .fail(error(value)) }
     }
 
-    /// Tries the effects in order and returns the first success. If all fail, fails with the
-    /// last failure. Dies if `effects` is empty.
+    /// Tries the effects in order and returns the first success. A typed failure moves on to
+    /// the next effect; defects and interruptions stop immediately. If every effect fails,
+    /// fails with the last failure. Dies if `effects` is empty.
     public static func firstSuccessOf(_ effects: [Effect]) -> Effect {
-        guard var result = effects.last else {
-            return .die(RuntimeError("firstSuccessOf requires at least one effect"))
-        }
-        for effect in effects.dropLast().reversed() {
-            let fallback = result
-            result = effect.catchAll { _ in fallback }
-        }
-        return result
+        Effect(unsafe: { fiber in
+            guard !effects.isEmpty else {
+                return .die(RuntimeError("firstSuccessOf requires at least one effect"))
+            }
+            for (index, effect) in effects.enumerated() {
+                let exit = await effect.unsafeRun(in: fiber)
+                guard case .failure(let cause) = exit, index < effects.count - 1 else { return exit }
+                if let skipped: Cause<Failure> = fiber.skippedRecovery(cause) { return .failure(skipped) }
+                if !cause.hasFails { return exit }
+            }
+            preconditionFailure("unreachable")
+        })
     }
 }

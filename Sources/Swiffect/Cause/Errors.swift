@@ -8,6 +8,7 @@ public struct TimeoutError: Error, Hashable, Sendable, CustomStringConvertible {
         self.duration = duration
     }
 
+    /// A human readable description of the error.
     public var description: String { "TimeoutError: operation timed out after \(duration)" }
 }
 
@@ -22,6 +23,7 @@ public struct NoSuchElementError: Error, Hashable, Sendable, CustomStringConvert
         self.message = message
     }
 
+    /// A human readable description of the error.
     public var description: String {
         message.map { "NoSuchElementError: \($0)" } ?? "NoSuchElementError"
     }
@@ -37,6 +39,7 @@ public struct RuntimeError: Error, Hashable, Sendable, CustomStringConvertible {
         self.message = message
     }
 
+    /// A human readable description of the error.
     public var description: String { "RuntimeError: \(message)" }
 }
 
@@ -51,6 +54,7 @@ public struct MissingServiceError: Error, Hashable, Sendable, CustomStringConver
         self.key = key
     }
 
+    /// A human readable description of the error.
     public var description: String { "MissingServiceError: service not found: \(key)" }
 }
 
@@ -83,6 +87,7 @@ public struct FiberFailure: Error, Sendable, CustomStringConvertible {
     /// Whether the cause consists of interruptions only.
     public var isInterruption: Bool { cause.hasInterruptsOnly }
 
+    /// A human readable description of the error.
     public var description: String { "FiberFailure:\n\(cause.pretty)" }
 
     /// Recovers the statically typed cause, if it was created with failure type `E`.

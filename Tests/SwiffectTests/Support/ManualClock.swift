@@ -27,7 +27,7 @@ final class ManualClock: ClockService {
                 state.sleepers.append(Sleeper(id: state.nextID, deadline: state.now + duration, wake: { resume(.void) }))
                 return state.nextID
             }
-            return .sync { self.state.withLock { $0.sleepers.removeAll { $0.id == id } } }
+            resume.onInterrupt { self.state.withLock { $0.sleepers.removeAll { $0.id == id } } }
         }
     }
 

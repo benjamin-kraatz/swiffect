@@ -15,6 +15,7 @@ extension Cause: CustomStringConvertible {
         return reasons.map(\.pretty).joined(separator: "\n")
     }
 
+    /// The same as ``pretty``.
     public var description: String { pretty }
 }
 
@@ -33,6 +34,7 @@ extension Cause.Reason: CustomStringConvertible {
         }
     }
 
+    /// The same as ``pretty``.
     public var description: String { pretty }
 }
 

@@ -52,57 +52,15 @@ extension Effect {
             guard fiber.isInterruptible else { return await operation() }
             let task: Effect = callback { resume in
                 let task = Task { resume(.fromExit(await operation())) }
-                return .sync { task.cancel() }
+                resume.onInterrupt { task.cancel() }
             }
             return await task.unsafeRun(in: fiber)
         })
     }
 
-    /// Creates an effect from a callback-based API.
-    ///
-    /// `register` is called when the effect runs and receives `resume`, which completes the
-    /// effect with the given effect (only the first call counts; it may happen synchronously
-    /// or later on any thread). If the fiber is interrupted while waiting it wakes up
-    /// immediately with the interruption, and the effect returned by `register` (if any) runs
-    /// uninterruptibly to clean up.
-    ///
-    /// ```swift
-    /// let delayed = Effect<Int, Never>.callback { resume in
-    ///     let item = DispatchWorkItem { resume(.succeed(42)) }
-    ///     DispatchQueue.global().asyncAfter(deadline: .now() + 1, execute: item)
-    ///     return .sync { item.cancel() }
-    /// }
-    /// ```
-    @_disfavoredOverload
-    public static func callback(
-        _ register: @escaping @Sendable (_ resume: @escaping @Sendable (Effect) -> Void) -> Effect<Void, Never>?
-    ) -> Effect {
-        Effect(unsafe: { fiber in
-            var cleanup: Effect<Void, Never>?
-            let resumed: Effect? = await fiber.suspend { resume in
-                cleanup = register(resume)
-            }
-            if let resumed { return await resumed.unsafeRun(in: fiber) }
-            if let cleanup { _ = await fiber.runUninterruptibly(cleanup) }
-            return fiber.interruptedExit()
-        })
-    }
-
-    /// Creates an effect from a callback-based API that needs no cleanup on interruption.
-    ///
-    /// See the cleanup-returning overload of `callback(_:)` for the semantics of `resume`.
-    public static func callback(
-        _ register: @escaping @Sendable (_ resume: @escaping @Sendable (Effect) -> Void) -> Void
-    ) -> Effect {
-        callback { resume -> Effect<Void, Never>? in
-            register(resume)
-            return nil
-        }
-    }
-
     /// An effect that never completes. It can only end through interruption.
     public static var never: Effect {
-        callback { (_: @escaping @Sendable (Effect) -> Void) -> Effect<Void, Never>? in nil }
+        callback { _ in }
     }
 }
 
@@ -129,6 +87,6 @@ extension Effect where Success == Void, Failure == Never {
 extension Effect where Success == Never, Failure == Never {
     /// An infallible effect that never completes. It can only end through interruption.
     public static var never: Effect {
-        callback { (_: @escaping @Sendable (Effect) -> Void) -> Effect<Void, Never>? in nil }
+        callback { _ in }
     }
 }

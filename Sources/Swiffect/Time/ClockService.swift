@@ -41,8 +41,10 @@ extension ClockService {
 
 /// The context reference holding the fiber's ``ClockService``. Defaults to ``LiveClock``.
 public enum CurrentClock: ReferenceKey {
+    /// The clock is stored as an existential so any implementation can be provided.
     public typealias Value = any ClockService
 
+    /// The live system clock.
     public static var defaultValue: any ClockService { LiveClock() }
 }
 
@@ -52,16 +54,20 @@ public struct LiveClock: ClockService {
     /// Creates the live clock.
     public init() {}
 
+    /// Reads `CLOCK_REALTIME`.
     public func currentTimeNanosUnsafe() -> Int64 {
         var spec = timespec()
         clock_gettime(CLOCK_REALTIME, &spec)
         return Int64(spec.tv_sec) * 1_000_000_000 + Int64(spec.tv_nsec)
     }
 
+    /// Time elapsed on `ContinuousClock` since the process first used the live clock.
     public func monotonicNowUnsafe() -> Duration {
         ContinuousClock.now - monotonicOrigin
     }
 
+    /// Sleeps with `Task.sleep` on a child task that is cancelled when the fiber is
+    /// interrupted. Non-positive durations just yield.
     public func sleep(for duration: Duration) -> Effect<Void, Never> {
         guard duration > .zero else { return .yieldNow }
         return .callback { resume in
@@ -69,7 +75,7 @@ public struct LiveClock: ClockService {
                 try? await Task.sleep(for: duration)
                 resume(.void)
             }
-            return .sync { task.cancel() }
+            resume.onInterrupt { task.cancel() }
         }
     }
 }

@@ -1,3 +1,4 @@
+import Synchronization
 import Testing
 @testable import Swiffect
 
@@ -76,6 +77,22 @@ import Testing
         gate.open()
         #expect(await fiber.exit.isInterrupted)
         #expect(log.all == ["finalized"])
+    }
+
+    @Test func callbackCleanupRunsOnInterruptionAndLateResumeIsIgnored() async throws {
+        let registered = Latch(), log = Recorder()
+        let resumer = Mutex<Effect<Int, Never>.Resume?>(nil)
+        let effect = Effect<Int, Never>.callback { resume in
+            resumer.withLock { $0 = resume }
+            resume.onInterrupt(log.log("cleanup"))
+            registered.open()
+        }
+        let fiber = effect.runFork()
+        await registered.waitAsync()
+        fiber.unsafeInterrupt()
+        #expect(await fiber.exit.isInterrupted)
+        resumer.withLock { $0?(.succeed(1)) }
+        #expect(log.all == ["cleanup"])
     }
 
     @Test func onInterruptReceivesInterruptors() async throws {

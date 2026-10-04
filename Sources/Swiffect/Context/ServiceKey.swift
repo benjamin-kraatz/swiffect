@@ -34,6 +34,7 @@ public protocol ServiceKey: Sendable {
 }
 
 extension ServiceKey {
+    /// The fully qualified name of the key type.
     public static var name: String { String(reflecting: Self.self) }
 }
 

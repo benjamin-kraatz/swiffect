@@ -30,8 +30,7 @@ public struct Fiber<Success: Sendable, Failure: Error>: Sendable, Hashable {
         let core = self.core
         return Effect<Exit<Success, Failure>, Never>.callback { resume in
             let token = core.observe { exit in resume(.succeed(exit as! Exit<Success, Failure>)) }
-            guard let token else { return nil }
-            return .sync { core.removeObserver(token) }
+            if let token { resume.onInterrupt { core.removeObserver(token) } }
         }
     }
 
@@ -88,10 +87,12 @@ public struct Fiber<Success: Sendable, Failure: Error>: Sendable, Hashable {
         get async { await core.waitForExit() as! Exit<Success, Failure> }
     }
 
+    /// Two handles are equal when they refer to the same fiber.
     public static func == (lhs: Fiber, rhs: Fiber) -> Bool {
         lhs.core === rhs.core
     }
 
+    /// Hashes the fiber identifier.
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
