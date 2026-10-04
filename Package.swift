@@ -1,32 +1,45 @@
 // swift-tools-version: 6.4
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
+// Concurrency settings
+//
+// The package builds in the Swift 6 language mode with strict concurrency checking and
+// deliberately does NOT enable the `ApproachableConcurrency` feature set. Its main component,
+// `NonisolatedNonsendingByDefault`, makes nonisolated `async` functions and closures inherit
+// the caller's actor. Swiffect's runtime stores `@Sendable async` closures inside effects and
+// runs them later on fibers (unstructured tasks) that are never bound to an actor. With the
+// classic Swift 6 rules a nonisolated async function always runs on the global concurrent
+// executor, so the place where an effect body executes does not depend on who happens to call
+// `run()`. That keeps scheduling, interruption and stack behaviour the same everywhere.
+let swiftSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v6),
+]
+
 let package = Package(
     name: "Swiffect",
+    platforms: [
+        .macOS(.v15),
+        .iOS(.v18),
+        .tvOS(.v18),
+        .watchOS(.v11),
+        .visionOS(.v2),
+    ],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "Swiffect",
             targets: ["Swiffect"]
         ),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
             name: "Swiffect",
-            swiftSettings: [
-                .enableUpcomingFeature("ApproachableConcurrency"),
-            ],
+            swiftSettings: swiftSettings
         ),
         .testTarget(
             name: "SwiffectTests",
             dependencies: ["Swiffect"],
-            swiftSettings: [
-                .enableUpcomingFeature("ApproachableConcurrency"),
-            ],
+            swiftSettings: swiftSettings
         ),
     ]
 )
